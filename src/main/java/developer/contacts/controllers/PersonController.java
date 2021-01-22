@@ -55,7 +55,7 @@ public class PersonController {
         if (query.isEmpty()) {
             personPage = personRepository.findAll(PageRequest.of(page - 1, perPage));
         } else {
-            personPage = personRepository.findWithFilter(query, PageRequest.of(page, perPage));
+            personPage = personRepository.findWithFilter(query, PageRequest.of(page - 1, perPage));
         }
         return new ResponseEntity<>(new PersonListResponse(personPage.getTotalElements(), personPage.toList()), HttpStatus.OK);
     }
