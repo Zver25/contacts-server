@@ -3,6 +3,8 @@ package developer.contacts.controllers;
 import developer.contacts.domains.Person;
 import developer.contacts.payloads.PersonListResponse;
 import developer.contacts.repositories.PersonRepository;
+import developer.contacts.services.BlockingService;
+import developer.contacts.services.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.core.MessageSendingOperations;
@@ -23,17 +27,18 @@ import org.springframework.scheduling.config.Task;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
+import java.security.Principal;
 import java.util.Date;
 
 @RestController
 @RequestMapping("/api/people")
 public class PersonController {
 
-    private static final Logger logger = LoggerFactory.getLogger(PersonController.class);
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(PersonController.class);
     private PersonRepository personRepository;
-
-    private SimpMessagingTemplate simpMessagingTemplate;
+    private BlockingService blockingService;
+    private NotificationService notificationService;
 
     @Autowired
     public void setPersonRepository(PersonRepository personRepository) {
@@ -41,8 +46,13 @@ public class PersonController {
     }
 
     @Autowired
-    public void setSimpMessagingTemplate(SimpMessagingTemplate simpMessagingTemplate) {
-        this.simpMessagingTemplate = simpMessagingTemplate;
+    public void setNotificationService(NotificationService notificationService) {
+        this.notificationService = notificationService;
+    }
+
+    @Autowired
+    public void setBlockingService(BlockingService blockingService) {
+        this.blockingService = blockingService;
     }
 
     @GetMapping
@@ -66,14 +76,19 @@ public class PersonController {
     }
 
     @PutMapping("{id}")
-    public Person update(@PathVariable Long id, @RequestBody Person requestPerson) throws Exception {
+    public Person update(@PathVariable Long id, @RequestBody Person requestPerson, HttpServletRequest request) throws Exception {
+        String client = request.getSession().getId();
+        if (blockingService.isPersonBlocked(id, client)) {
+            throw new Exception("Person blocked");
+        }
         Person updatedPerson = personRepository.findById(id)
                 .map(person -> {
                     person.apply(requestPerson);
                     return personRepository.save(person);
                 })
                 .orElseThrow(() -> new Exception("Person not found"));
-        simpMessagingTemplate.convertAndSend("/topic/people", updatedPerson);
+        LOGGER.info("Client {}, updated person#{}", client, id);
+        notificationService.notifyAllClients("/topic/people", updatedPerson);
         return updatedPerson;
     }
 
@@ -83,13 +98,22 @@ public class PersonController {
     }
 
     @DeleteMapping("{id}")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable Long id, HttpServletRequest request) throws Exception {
+        String client = request.getSession().getId();
+        if (blockingService.isPersonBlocked(id, client)) {
+            throw new Exception("Person blocked");
+        }
+        notificationService.notifyAllClients("/topic/people/delete", id);
         personRepository.deleteById(id);
+        LOGGER.info("Client {}, delete person#{}", client, id);
     }
 
     @MessageMapping("/api/people/change")
     @SendTo("/topic/people")
-    public Person change(final Person requestPerson) throws Exception {
+    public Person change(final Person requestPerson, Principal principal) throws Exception {
+        if (blockingService.isPersonBlocked(requestPerson.getId(), principal.getName())) {
+            throw new Exception("Person blocked");
+        }
         Person updatedPerson;
         if (requestPerson.getId() != null && requestPerson.getId() > 0) {
             // update
