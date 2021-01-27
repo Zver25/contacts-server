@@ -10,9 +10,8 @@ import org.springframework.messaging.simp.annotation.SubscribeMapping;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class BlockingController {
@@ -38,10 +37,10 @@ public class BlockingController {
 
     @SubscribeMapping("/people/blockingList")
     public List<BlockingPayload> initialBlock() {
-        List<BlockingPayload> payload = new ArrayList<>();
-        for (Map.Entry<Long, String> blocking: blockingService.getBlockingList().entrySet()) {
-            payload.add(new BlockingPayload(blocking.getKey(), blocking.getValue()));
-        }
-        return payload;
+        return blockingService.getBlockingList()
+                .entrySet()
+                .stream()
+                .map(blocking -> new BlockingPayload(blocking.getKey(), blocking.getValue()))
+                .collect(Collectors.toList());
     }
 }
