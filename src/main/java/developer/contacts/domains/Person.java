@@ -45,6 +45,13 @@ public class Person {
         this.lastName = lastName;
     }
 
+    @Override
+    public String toString() {
+        return String.format("Person: {id = %d, lastName = %s, firstName = %s, email = %s}",
+                id, firstName, lastName, email
+        );
+    }
+
     public void apply(Person person) {
         this.email = person.email;
         this.firstName = person.firstName;

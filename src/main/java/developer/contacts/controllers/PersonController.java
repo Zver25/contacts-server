@@ -5,37 +5,22 @@ import developer.contacts.payloads.PersonListResponse;
 import developer.contacts.repositories.PersonRepository;
 import developer.contacts.services.BlockingService;
 import developer.contacts.services.NotificationService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.core.MessageSendingOperations;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessageSendingOperations;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.config.Task;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.security.Principal;
-import java.util.Date;
 
 @RestController
 @RequestMapping("/api/people")
 public class PersonController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PersonController.class);
     private PersonRepository personRepository;
     private BlockingService blockingService;
     private NotificationService notificationService;
@@ -87,7 +72,6 @@ public class PersonController {
                     return personRepository.save(person);
                 })
                 .orElseThrow(() -> new Exception("Person not found"));
-        LOGGER.info("Client {}, updated person#{}", client, id);
         notificationService.notifyAllClients("/topic/people", updatedPerson);
         return updatedPerson;
     }
@@ -105,7 +89,6 @@ public class PersonController {
         }
         notificationService.notifyAllClients("/topic/people/delete", id);
         personRepository.deleteById(id);
-        LOGGER.info("Client {}, delete person#{}", client, id);
     }
 
     @MessageMapping("/api/people/change")

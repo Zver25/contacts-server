@@ -1,15 +1,14 @@
 package developer.contacts.services;
 
 import developer.contacts.payloads.BlockingPayload;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class BlockingService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BlockingService.class);
 
     private static final String BLOCK_DESTINATION = "/topic/people/block";
     private static final String UNBLOCK_DESTINATION = "/topic/people/unblock";

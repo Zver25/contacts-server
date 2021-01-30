@@ -14,4 +14,9 @@ public class AnonymousPrincipal implements Principal {
     public String getName() {
         return sessionId;
     }
+
+    @Override
+    public String toString() {
+        return "AnonymousPrincipal: {sessionId = " + sessionId + "}";
+    }
 }
