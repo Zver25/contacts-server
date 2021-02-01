@@ -13,6 +13,16 @@ public class Person {
     private String firstName;
     private String lastName;
 
+    public Person() {
+    }
+
+    public Person(Long id, String email, String firstName, String lastName) {
+        this.id = id;
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+    }
+
     public Long getId() {
         return id;
     }

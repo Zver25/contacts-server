@@ -2,9 +2,9 @@ package developer.contacts.controllers;
 
 import developer.contacts.domains.Person;
 import developer.contacts.payloads.PersonListResponse;
-import developer.contacts.repositories.PersonRepository;
 import developer.contacts.services.BlockingService;
 import developer.contacts.services.NotificationService;
+import developer.contacts.services.PersonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,13 +21,13 @@ import java.security.Principal;
 @RequestMapping("/api/people")
 public class PersonController {
 
-    private PersonRepository personRepository;
+    private PersonService personService;
     private BlockingService blockingService;
     private NotificationService notificationService;
 
     @Autowired
-    public void setPersonRepository(PersonRepository personRepository) {
-        this.personRepository = personRepository;
+    public void setPersonService(PersonService personService) {
+        this.personService = personService;
     }
 
     @Autowired
@@ -48,16 +48,16 @@ public class PersonController {
     ) {
         Page<Person> personPage;
         if (query.isEmpty()) {
-            personPage = personRepository.findAll(PageRequest.of(page - 1, perPage));
+            personPage = personService.findAll(PageRequest.of(page - 1, perPage));
         } else {
-            personPage = personRepository.findWithFilter(query, PageRequest.of(page - 1, perPage));
+            personPage = personService.findWithFilter(query, PageRequest.of(page - 1, perPage));
         }
         return new ResponseEntity<>(new PersonListResponse(personPage.getTotalElements(), personPage.toList()), HttpStatus.OK);
     }
 
     @GetMapping("{id}")
     public Person get(@PathVariable Long id) throws Exception {
-        return personRepository.findById(id).orElseThrow(() -> new Exception("Person not found"));
+        return personService.findById(id).orElseThrow(() -> new Exception("Person not found"));
     }
 
     @PutMapping("{id}")
@@ -66,10 +66,10 @@ public class PersonController {
         if (blockingService.isPersonBlocked(id, client)) {
             throw new Exception("Person blocked");
         }
-        Person updatedPerson = personRepository.findById(id)
+        Person updatedPerson = personService.findById(id)
                 .map(person -> {
                     person.apply(requestPerson);
-                    return personRepository.save(person);
+                    return personService.save(person);
                 })
                 .orElseThrow(() -> new Exception("Person not found"));
         notificationService.notifyAllClients("/topic/people", updatedPerson);
@@ -77,8 +77,8 @@ public class PersonController {
     }
 
     @PostMapping
-    public Person newPerson(@RequestBody Person requestPerson) {
-        return personRepository.save(requestPerson);
+    public Person create(@RequestBody Person requestPerson) {
+        return personService.save(requestPerson);
     }
 
     @DeleteMapping("{id}")
@@ -88,7 +88,7 @@ public class PersonController {
             throw new Exception("Person blocked");
         }
         notificationService.notifyAllClients("/topic/people/delete", id);
-        personRepository.deleteById(id);
+        personService.deleteById(id);
     }
 
     @MessageMapping("/api/people/change")
@@ -100,16 +100,16 @@ public class PersonController {
         Person updatedPerson;
         if (requestPerson.getId() != null && requestPerson.getId() > 0) {
             // update
-            updatedPerson = personRepository.findById(requestPerson.getId())
+            updatedPerson = personService.findById(requestPerson.getId())
                     .map(person -> {
                         person.apply(requestPerson);
-                        person = personRepository.save(person);
+                        person = personService.save(person);
                         return person;
                     })
                     .orElseThrow(() -> new Exception("Person not found"));
         } else {
             // create
-            updatedPerson = personRepository.save(requestPerson);
+            updatedPerson = personService.save(requestPerson);
         }
         return updatedPerson;
     }
